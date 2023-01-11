@@ -56,3 +56,46 @@ select
   where rank <= 3
   order by rank
 ;
+
+/* Classify
+Classify facilities into equally sized groups of high, average,
+and low based on their revenue. Order by classification and facility name. */
+
+-- My answer:
+select
+    name,
+    revenue from ( -- I'm missing a case function to create the bucket names
+      select
+          fcs.name as name,
+          ntile(3) over (order by sum(case
+                                    when bks.memid = 0 then bks.slots*fcs.guestcost
+                                    else bks.slots*fcs.membercost
+                                    end) desc) as revenue
+        from cd.bookings bks
+        inner join cd.facilities fcs
+            on bks.facid = fcs.facid
+        group by fcs.name) as subq
+    order by revenue
+;
+
+-- Their answer:
+select
+    name,
+    case
+        when class=1 then 'high'
+        when class=2 then 'average'
+        when class=3 then 'low'
+        end
+    revenue from (
+      select
+          fcs.name as name,
+          ntile(3) over (order by sum(case
+                                    when bks.memid = 0 then bks.slots*fcs.guestcost
+                                    else bks.slots*fcs.membercost
+                                    end) desc) as class
+        from cd.bookings bks
+        inner join cd.facilities fcs
+            on bks.facid = fcs.facid
+        group by fcs.name) as subq
+    order by class, name
+;
