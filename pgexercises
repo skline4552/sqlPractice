@@ -1,0 +1,58 @@
+-- PostgreSQL Exercises
+-- https://pgexercises.com/questions/aggregates/facrev3.html
+
+-- Picking up from where I left off on Aggregates...
+
+/* Rankmembers
+Produce a list of members (including guests), along with the number of hours
+they've booked in facilities, rounded to the nearest ten hours. Rank them by this
+rounded figure, producing output of first name, surname, rounded hours, rank.
+Sort by rank, surname, and first name. */
+
+-- My answer:
+select
+    mbs.firstname,
+		mbs.surname,
+		round(sum(bks.slots*.5),-1) as hours, -- Their answer didn't like this, but the round(*whatever*,-1) will take it to the closest 10s, they used math instead
+		rank() over (order by sum(bks.slots) desc) as rank
+	from cd.bookings as bks
+	inner join cd.members as mbs
+		on bks.memid = mbs.memid
+	group by mbs.memid
+	order by rank, mbs.surname, mbs.firstname
+;
+
+-- Their answer:
+select
+    firstname,
+    surname,
+    ((sum(bks.slots)+10)/20)*10) as hours,
+    rank() over (order by ((sum(bks.slots)+10)/20)*10 desc) as rank
+    from cd.bookings bks
+    inner join cd.members mems
+        on bks.memid = mems.memid
+    group by mems.memid
+order by rank, surname, firstname
+;
+
+/* Facrev3
+Produce a list of the top three revenue generating facilities (including ties).
+Output facility name and rank, sorted by rank and facility name. */
+
+-- My answer:
+select
+    name,
+    rank from (
+        select
+            fcs.name as name,
+            rank() over (order by sum(case
+                                      when bks.memid = 0 then bks.slots*fcs.guestcost
+                                      else bks.slots*fcs.membercost
+                                      end) as rank
+          from cd.bookings bks
+          inner join cd.facilities fcs
+              on bks.facid = fcs.facid
+          group by fcs.name) as subq
+  where rank <= 3
+  order by rank
+;
