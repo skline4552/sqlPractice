@@ -48,7 +48,7 @@ select
             rank() over (order by sum(case
                                       when bks.memid = 0 then bks.slots*fcs.guestcost
                                       else bks.slots*fcs.membercost
-                                      end) as rank
+                                      end) desc) as rank
           from cd.bookings bks
           inner join cd.facilities fcs
               on bks.facid = fcs.facid
