@@ -242,3 +242,41 @@ select 	name,
 			group by facs.facid
 		) as subq
 order by name;
+
+/*
+Rollingavg
+For each day in August 2012, calculate a rolling average of total revenue over the previous 15 days. 
+Output should contain date and revenue columns, sorted by the date. Remember to account for the 
+possibility of a day having zero revenue. This one's a bit tough, so don't be afraid to check out the hint!
+*/
+
+-- My anwser:
+select
+        date,
+        avgRev from (
+            -- average over this row and the 14 rows before it
+            select
+                    dateGen.date as date,
+                    avg(revData.rev) over (order by dateGen.date rows 14 preceding) as avgRev
+                from
+                 -- generate a list of days so they count even if 0 revenue
+                    (select 
+                            cast(generate_series(timestamp '2012-07-10', '2012-08-31','1 day') as date) as date
+                    ) as dateGen
+                left outer join
+                    (select 
+                            cast(bks.starttime as date) as date,
+                            sum(case
+                                when memid = 0 then slots * fcs.guestcost
+                                else slots * membercost
+                                end) as rev
+                        from cd.bookings bks
+                        inner join cd.facilities fcs
+                                on bks.facid = fcs.facid
+                        group by cast(bks.starttime as date)
+                    ) as revData
+                    on dateGen.date = revData.date
+        ) as subq
+    where date >= '2012-08-01'
+    order by date
+;
