@@ -1,7 +1,7 @@
 -- PostgreSQL Exercises
 -- https://pgexercises.com/questions/aggregates
 
--- Picking up from where I left off on Aggregates...
+-- *~*~* Aggregates *~*~*
 
 /*
 Rankmembers
@@ -280,3 +280,25 @@ select
     where date >= '2012-08-01'
     order by date
 ;
+
+-- *~*~* Dates *~*~*
+
+/* 
+Timestamp
+Produce a timestamp for 1 a.m. on the 31st of August 2012.
+*/
+
+-- My answer:
+select '2012-08-31' + interval '1 hour' as timestamp;
+
+-- It worked, but I was thinking too hard about it
+select timestamp '2012-08-31 01:00:00';
+
+
+/*
+Interval
+Find the result of subtracting the timestamp '2012-07-30 01:00:00' from the timestamp '2012-08-31 01:00:00'
+*/
+
+-- My answer:
+select (timestamp '2012-08-31 01:00:00' - timestamp '2012-07-30 01:00:00') as interval;
