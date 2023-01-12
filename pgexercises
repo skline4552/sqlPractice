@@ -3,17 +3,22 @@
 
 -- Picking up from where I left off on Aggregates...
 
-/* Rankmembers
+/*
+Rankmembers
 Produce a list of members (including guests), along with the number of hours
 they've booked in facilities, rounded to the nearest ten hours. Rank them by this
 rounded figure, producing output of first name, surname, rounded hours, rank.
-Sort by rank, surname, and first name. */
+Sort by rank, surname, and first name.
+*/
 
 -- My answer:
 select
     mbs.firstname,
 		mbs.surname,
-		round(sum(bks.slots*.5),-1) as hours, -- Their answer didn't like this, but the round(*whatever*,-1) will take it to the closest 10s, they used math instead
+		round(sum(bks.slots*.5),-1) as hours, -- Their answer didn't like this,
+                                          -- but the round(*whatever*,-1) will
+                                          -- take it to the closest 10s,
+                                          -- they used math instead
 		rank() over (order by sum(bks.slots) desc) as rank
 	from cd.bookings as bks
 	inner join cd.members as mbs
@@ -35,9 +40,12 @@ select
 order by rank, surname, firstname
 ;
 
-/* Facrev3
+
+/*
+Facrev3
 Produce a list of the top three revenue generating facilities (including ties).
-Output facility name and rank, sorted by rank and facility name. */
+Output facility name and rank, sorted by rank and facility name.
+*/
 
 -- My answer:
 select
@@ -57,9 +65,11 @@ select
   order by rank
 ;
 
-/* Classify
+/*
+Classify
 Classify facilities into equally sized groups of high, average,
-and low based on their revenue. Order by classification and facility name. */
+and low based on their revenue. Order by classification and facility name.
+*/
 
 -- My answer:
 select
@@ -99,3 +109,136 @@ select
         group by fcs.name) as subq
     order by class, name
 ;
+
+
+/*
+Payback
+Based on the 3 complete months of data so far, calculate the amount of time each
+facility will take to repay its cost of ownership. Remember to take into account
+ongoing monthly maintenance. Output facility name and payback time in months,
+order by facility name. Don't worry about differences in month lengths, we're
+only looking for a rough value here!
+*/
+
+-- Notes
+-- Payback: Total Revenue - Maintenance Costs = Initial Outlay
+-- Total Revenue: sum(memberSlots*memberCost) + sum(guestSlots*guestCost)
+-- Total Revenue Equation:
+sum(slots * case
+					when memid = 0 then fcs.guestcost
+					else fcs.membercost
+					end)
+			as revenue
+-- Maintenance Costs: monthlyMaintenance * numberOfMonths
+
+-- My answer:
+select
+    fcs.name,
+    fcs.initialoutlay/ ((sum(slots * case
+		                                 when memid = 0 then fcs.guestcost
+					                           else fcs.membercost
+					                           end)
+			  - fcs.monthlymaintenance)/3) as months -- hard coded number of months
+  from cd.bookings bks
+  inner join cd.facilities fcs
+    on bks.facid = fcs.facid
+  group by fcs.facid
+  order by fcs.name
+;
+
+-- Cleaner answer:
+-- (still hard codes the date though)
+select
+    name,
+    initialOutlay / (monthlyRevenue - monthlyMaintenance) as repayTime
+    from (
+        select
+            fcs.name as name,
+            fcs.initialoutlay as initialOutlay,
+            fcs.monthlymaintenance as monthlyMaintenance,
+            sum(case
+                when memid = 0 then fcs.guestcost*bks.slots
+    					  else fcs.membercost*bks.slots
+    					  end)/3 as monthlyRevenue
+          from cd.bookings bks
+          inner join cd.facilities fcs
+              on bks.facid = fcs.facid
+          group by fcs.facid
+        ) as subq
+    order by name
+;
+
+-- Copying their answer on how to extract the months:
+-- ** isn't working correctly **
+with monthData as (
+    select
+        minCompleteMonth,
+        maxCompleteMonth,
+        (extract(year from maxCompleteMonth)*12) +
+            extract(month from maxCompleteMonth) -
+            (extract(year from minCompleteMonth)*12) -
+            extract(month from minCompleteMonth) as numMonths
+      from (
+          select
+              date_trunc('month',
+                  (select max(starttime) from cd.bookings)) as maxCompleteMonth,
+              date_trunc('month',
+                  (select min(starttime) from cd.bookings)) as minCompleteMonth
+            ) as subq
+)
+select
+    name,
+    initialOutlay / (monthlyRevenue - monthlyMaintenance) as repayTime
+  from (
+      select
+          fcs.name as name,
+          fcs.initialoutlay as initialOutlay,
+          fcs.monthlyMaintenance as monthlyMaintenance,
+          sum(case
+              when memid = 0 then fcs.guestcost*bks.slots
+              else fcs.membercost*bks.slots
+              end)/(select numMonths from monthData) as monthlyRevenue
+        from cd.bookings bks
+        inner join cd.facilities fcs
+            on bks.facid = fcs.facid
+        where bks.starttime < (select maxCompleteMonth from monthData)
+        group by fcs.facid
+      ) as subq
+  order by name
+;
+
+-- Their answer:
+-- WHICH DOESN'T WORK EITHER
+with monthdata as (
+	select 	mincompletemonth,
+		maxcompletemonth,
+		(extract(year from maxcompletemonth)*12) +
+			extract(month from maxcompletemonth) -
+			(extract(year from mincompletemonth)*12) -
+			extract(month from mincompletemonth) as nummonths
+	from (
+		select 	date_trunc('month',
+				(select max(starttime) from cd.bookings)) as maxcompletemonth,
+			date_trunc('month',
+				(select min(starttime) from cd.bookings)) as mincompletemonth
+	) as subq
+)
+select 	name,
+	initialoutlay / (monthlyrevenue - monthlymaintenance) as repaytime
+
+	from
+		(select facs.name as name,
+			facs.initialoutlay as initialoutlay,
+			facs.monthlymaintenance as monthlymaintenance,
+			sum(case
+				when memid = 0 then slots * facs.guestcost
+				else slots * membercost
+			end)/(select nummonths from monthdata) as monthlyrevenue
+
+			from cd.bookings bks
+			inner join cd.facilities facs
+				on bks.facid = facs.facid
+			where bks.starttime < (select maxcompletemonth from monthdata)
+			group by facs.facid
+		) as subq
+order by name;
