@@ -465,11 +465,12 @@ select
 select 
         name,
         month,
-        round((100 * slots)/ -- why 100?
+        round(
+            (100 * slots)/ -- why 100?
             cast(
                     25 * (cast((month + interval '1 month') as date)
-                    - cast(month as date)) as numeric), 1
-            ) as utilization
+                    - cast(month as date)) as numeric)
+            , 1) as utilization
         from (
             select
                     fcs.name as name,
@@ -482,3 +483,39 @@ select
         ) as inn
     order by name, month
 ;
+
+
+/*
+====================================================================================
+String
+====================================================================================
+*/
+
+
+/*
+Concat
+====================================================================================
+Output the names of all members, formatted as 'Surname, Firstname'.
+*/
+
+-- My answer:
+select concat(surname,', ',firstname) from cd.members;
+
+-- Their answer, which might be more readable (and slightly more performanced):
+select surname || ', ' || firstname as name from cd.members;
+
+
+/*
+Like
+====================================================================================
+Find all facilities whose name begins with 'Tennis'. Retrieve all columns.
+*/
+
+select *
+    from cd.facilities
+    where name like 'Tennis%'
+;
+
+-- They brought up how indexes could be impacted if using a 'locale' besides 'C' - I'm
+-- unsure of what that means/how to use it, so that might warrant some further research.
+
