@@ -28,7 +28,6 @@ select
     inner join products p on od.productid = p.productid
     where p.productname = "widget"
 ;
-    )
 
 
 
@@ -60,7 +59,7 @@ select
 -- When I checked the documentation they only listed the "create table" 
 -- then "insert into" method, so that's what I'll go with as my answer
 create table #widgetBuyers (
-    customerid varchar(5), -- Again, adding as 'primary key'
+    customerid varchar(5), -- Adding as 'primary key'
     contactname varchar(30),
     address varchar(60),
     city varchar(15),
@@ -101,7 +100,7 @@ with cte as (
             city,
             postalcode,
             row_number() over (partition by customerid order by customerid) rn
-        from #widgerBuyers
+        from #widgetBuyers
     )
 delete from cte where rn > 1
 ;
@@ -215,7 +214,7 @@ alter table customers
 add active_customer_status boolean null
 ;
 
--- Updating active_customer_status with the data from #activeUserStatus
+-- Updating active_customer_status with the data from #active_customer_status_table
 update customers
 inner join #active_customer_status_table on customers.customerid = #active_customer_status_table.customerid
 set customers.active_customer_status = #active_customer_status_table.active_customer_status
